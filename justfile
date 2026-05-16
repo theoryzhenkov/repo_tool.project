@@ -12,6 +12,8 @@ smoke:
     set -euo pipefail
     system="$(nix eval --impure --raw --expr 'builtins.currentSystem')"
     pkg="$(nix build ".#packages.$system.project-fixture" --print-out-paths --no-link)"
+    test ! -L "$pkg/bin/project"
+    test "$(readlink -f "$pkg/bin/project")" = "$pkg/bin/project"
     "$pkg/bin/project" help | diff -u tests/golden/project-fixture/help.txt -
     "$pkg/bin/project" list | diff -u tests/golden/project-fixture/list.txt -
     "$pkg/bin/project" repo list | diff -u tests/golden/project-fixture/repo-list.txt -
