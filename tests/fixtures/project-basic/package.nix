@@ -45,7 +45,7 @@ pkgs.callPackage (projectModules + "/profile.nix") {
   ownerUser = username;
   userPrefix = "usr.prj_";
   workDirName = "src";
-  approvalRoot = "/tmp/project-fixture-approval";
+  grantRoot = "/tmp/project-fixture-grants";
   catalogWriteDir = "";
   agentConfigSharingSystemPackageRoot = null;
 }

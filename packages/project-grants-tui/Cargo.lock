@@ -283,7 +283,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "project-approvals-tui"
+name = "project-grants-tui"
 version = "0.1.0"
 dependencies = [
  "crossterm",

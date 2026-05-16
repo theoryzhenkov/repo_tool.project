@@ -4,16 +4,14 @@
   projectCatalogJson,
   userPrefix ? "usr.prj_",
   workDirName ? "src",
-  approvalRoot,
+  grantRoot,
 }:
 
 let
-  projectApprovalScript = pkgs.writeText "project-approval.py" (
-    builtins.readFile ./project-approval.py
-  );
+  projectGrantScript = pkgs.writeText "project-grant.py" (builtins.readFile ./project-grant.py);
 in
 pkgs.writeShellApplication {
-  name = "project-approval";
+  name = "project-grant";
   runtimeInputs = [
     pkgs.acl
     pkgs.python3
@@ -22,8 +20,8 @@ pkgs.writeShellApplication {
     export PROJECT_CATALOG_JSON=${lib.escapeShellArg projectCatalogJson}
     export PROJECT_USER_PREFIX=${lib.escapeShellArg userPrefix}
     export PROJECT_WORKDIR_NAME=${lib.escapeShellArg workDirName}
-    export PROJECT_APPROVAL_ROOT=${lib.escapeShellArg approvalRoot}
+    export PROJECT_GRANT_ROOT=${lib.escapeShellArg grantRoot}
     export SETFACL=${pkgs.acl}/bin/setfacl
-    exec python3 ${lib.escapeShellArg projectApprovalScript} "$@"
+    exec python3 ${lib.escapeShellArg projectGrantScript} "$@"
   '';
 }

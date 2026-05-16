@@ -25,6 +25,4 @@ Usage:
   project grants [tui]
   project revoke <grant-id>
   project grant list|show|approve|reject|result|logs|runs|revoke|tui [...]
-  project approvals  # compatibility alias for project grants tui
-  project approval ...  # compatibility alias for project grant ...
   project <name> [command...]

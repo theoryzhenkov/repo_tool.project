@@ -15,7 +15,7 @@ def load_catalog():
     return json.load(fh)
 
 CATALOG = load_catalog()
-ROOT = Path(os.environ["PROJECT_APPROVAL_ROOT"])
+ROOT = Path(os.environ["PROJECT_GRANT_ROOT"])
 SETFACL = os.environ["SETFACL"]
 REQUESTS = ROOT / "requests"
 RESULTS = ROOT / "results"

@@ -18,11 +18,11 @@
   ownerUser,
   userPrefix ? "usr.prj_",
   workDirName ? "src",
-  approvalRoot,
+  grantRoot,
   catalogWriteDir ? "",
   catalogApplyMessage ? null,
   agentConfigSharingSystemPackageRoot ? null,
-  approvalsTuiTitle ? "Project approvals",
+  grantsTuiTitle ? "Project grants",
   sudoCommand ? [
     "/run/wrappers/bin/sudo"
     "-n"
@@ -62,19 +62,19 @@ let
       ;
     applyMessage = catalogApplyMessage;
   };
-  projectApprovalTool = pkgs.callPackage (projectModules + "/approval.nix") {
+  projectGrantTool = pkgs.callPackage (projectModules + "/grant.nix") {
     inherit
       lib
       pkgs
       projectCatalogJson
       userPrefix
       workDirName
-      approvalRoot
+      grantRoot
       ;
   };
-  projectApprovalsTui = pkgs.callPackage (projectModules + "/approvals-tui.nix") {
+  projectGrantsTui = pkgs.callPackage (projectModules + "/grants-tui.nix") {
     inherit pkgs;
-    title = approvalsTuiTitle;
+    title = grantsTuiTitle;
   };
   projectCli = pkgs.callPackage projectModules {
     inherit
@@ -83,9 +83,9 @@ let
       projectCatalogJson
       ownerUser
       agentConfigSharingSystemPackageRoot
-      projectApprovalTool
+      projectGrantTool
       projectCatalogTool
-      projectApprovalsTui
+      projectGrantsTui
       sudoCommand
       switchUserCommand
       loginShell
@@ -117,9 +117,9 @@ pkgs.callPackage (projectModules + "/package.nix") {
   inherit
     pkgs
     projectCli
-    projectApprovalsTui
+    projectGrantsTui
     projectCompletions
-    projectApprovalTool
+    projectGrantTool
     projectCatalogTool
     ;
 }

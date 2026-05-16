@@ -430,7 +430,7 @@ fn render(frame: &mut Frame, app: &mut App) {
         app.status
     ))
     .block(Block::default().borders(Borders::ALL).title(
-        std::env::var("PROJECT_APPROVALS_TUI_TITLE").unwrap_or_else(|_| "Project grants".to_string()),
+        std::env::var("PROJECT_GRANTS_TUI_TITLE").unwrap_or_else(|_| "Project grants".to_string()),
     ));
     frame.render_widget(header, root[0]);
 

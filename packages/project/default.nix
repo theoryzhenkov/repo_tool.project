@@ -11,9 +11,9 @@
   scopeActCase,
   ownerUser,
   agentConfigSharingSystemPackageRoot ? null,
-  projectApprovalTool,
+  projectGrantTool,
   projectCatalogTool,
-  projectApprovalsTui,
+  projectGrantsTui,
   sudoCommand ? [
     "/run/wrappers/bin/sudo"
     "-n"
@@ -73,8 +73,6 @@ pkgs.writeShellApplication {
       project grants [tui]
       project revoke <grant-id>
       project grant list|show|approve|reject|result|logs|runs|revoke|tui [...]
-      project approvals  # compatibility alias for project grants tui
-      project approval ...  # compatibility alias for project grant ...
       project <name> [command...]
     USAGE
     }
@@ -206,7 +204,7 @@ pkgs.writeShellApplication {
         return 0
       fi
 
-      ${projectApprovalTool}/bin/project-approval can-act "$caller" "$canonical_project" >/dev/null
+      ${projectGrantTool}/bin/project-grant can-act "$caller" "$canonical_project" >/dev/null
     }
 
     run_as_project_at() {
@@ -418,9 +416,6 @@ pkgs.writeShellApplication {
             ;;
         esac
         ;;
-      approvals)
-        exec ${projectApprovalsTui}/bin/project-approvals-tui "$@"
-        ;;
       grants)
         subcommand="''${1:-list}"
         if [ "$#" -gt 0 ]; then
@@ -431,10 +426,10 @@ pkgs.writeShellApplication {
             if [ "$as_root" -eq 0 ] && [ "$(id -un)" = ${lib.escapeShellArg ownerUser} ]; then
               require_root grants "$@"
             fi
-            exec ${projectApprovalTool}/bin/project-approval grants "$@"
+            exec ${projectGrantTool}/bin/project-grant grants "$@"
             ;;
-          tui|approvals)
-            exec ${projectApprovalsTui}/bin/project-approvals-tui "$@"
+          tui)
+            exec ${projectGrantsTui}/bin/project-grants-tui "$@"
             ;;
           *)
             usage >&2
@@ -442,7 +437,7 @@ pkgs.writeShellApplication {
             ;;
         esac
         ;;
-      grant|approval)
+      grant)
         subcommand="''${1:-list}"
         if [ "$#" -gt 0 ]; then
           shift
@@ -452,31 +447,31 @@ pkgs.writeShellApplication {
             if [ "$as_root" -eq 0 ] && [ "$(id -un)" = ${lib.escapeShellArg ownerUser} ]; then
               require_root requests "$@"
             fi
-            exec ${projectApprovalTool}/bin/project-approval requests "$@"
+            exec ${projectGrantTool}/bin/project-grant requests "$@"
             ;;
           show)
             if [ "$as_root" -eq 0 ] && [ "$(id -un)" = ${lib.escapeShellArg ownerUser} ]; then
               require_root show "$@"
             fi
-            exec ${projectApprovalTool}/bin/project-approval show "$@"
+            exec ${projectGrantTool}/bin/project-grant show "$@"
             ;;
           approve|reject|revoke)
             if [ "$as_root" -eq 0 ]; then
               require_root "$subcommand" "$@"
             fi
-            exec ${projectApprovalTool}/bin/project-approval "$subcommand" "$@"
+            exec ${projectGrantTool}/bin/project-grant "$subcommand" "$@"
             ;;
           result)
-            exec ${projectApprovalTool}/bin/project-approval result "$@"
+            exec ${projectGrantTool}/bin/project-grant result "$@"
             ;;
           logs)
-            exec ${projectApprovalTool}/bin/project-approval logs "$@"
+            exec ${projectGrantTool}/bin/project-grant logs "$@"
             ;;
           runs|history)
-            exec ${projectApprovalTool}/bin/project-approval runs "$@"
+            exec ${projectGrantTool}/bin/project-grant runs "$@"
             ;;
-          tui|approvals)
-            exec ${projectApprovalsTui}/bin/project-approvals-tui "$@"
+          tui)
+            exec ${projectGrantsTui}/bin/project-grants-tui "$@"
             ;;
           *)
             usage >&2
@@ -488,19 +483,19 @@ pkgs.writeShellApplication {
         exec ${projectCatalogTool}/bin/project-catalog "$command" "$@"
         ;;
       request|result|logs|runs)
-        exec ${projectApprovalTool}/bin/project-approval "$command" "$@"
+        exec ${projectGrantTool}/bin/project-grant "$command" "$@"
         ;;
       requests|show)
         if [ "$as_root" -eq 0 ] && [ "$(id -un)" = ${lib.escapeShellArg ownerUser} ]; then
           require_root "$command" "$@"
         fi
-        exec ${projectApprovalTool}/bin/project-approval "$command" "$@"
+        exec ${projectGrantTool}/bin/project-grant "$command" "$@"
         ;;
       approve|reject|revoke|expire-grants)
         if [ "$as_root" -eq 0 ]; then
           require_root "$command" "$@"
         fi
-        exec ${projectApprovalTool}/bin/project-approval "$command" "$@"
+        exec ${projectGrantTool}/bin/project-grant "$command" "$@"
         ;;
       here)
         cwd="$(pwd -P)"
