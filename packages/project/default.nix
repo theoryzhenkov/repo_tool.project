@@ -14,6 +14,22 @@
   projectApprovalTool,
   projectCatalogTool,
   projectApprovalsTui,
+  sudoCommand ? [
+    "/run/wrappers/bin/sudo"
+    "-n"
+  ],
+  switchUserCommand ? [
+    "${pkgs.util-linux}/bin/runuser"
+    "-u"
+  ],
+  loginShell ? "${pkgs.fish}/bin/fish",
+  sshAgentPath ? "/run/lima-ssh-agent/agent.sock",
+  runtimePathPrefix ? [ "/run/wrappers/bin" ],
+  projectUserProfileRoot ? "/etc/profiles/per-user",
+  runtimePathSuffix ? [
+    "/nix/var/nix/profiles/default/bin"
+    "/run/current-system/sw/bin"
+  ],
 }:
 
 pkgs.writeShellApplication {
@@ -146,7 +162,7 @@ pkgs.writeShellApplication {
       fi
 
       self="$(readlink -f "$0")"
-      exec /run/wrappers/bin/sudo -n "$self" --as-root "$@"
+      exec ${lib.escapeShellArgs sudoCommand} "$self" --as-root "$@"
     }
 
     run_in_current_user_at() {
@@ -197,22 +213,24 @@ pkgs.writeShellApplication {
       lookup_project "$project"
 
       term="''${TERM:-xterm-256color}"
-      path="/run/wrappers/bin:/etc/profiles/per-user/$project_user/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin"
+      path=${lib.escapeShellArg (lib.concatStringsSep ":" runtimePathPrefix)}:${lib.escapeShellArg projectUserProfileRoot}/$project_user/bin:${lib.escapeShellArg (lib.concatStringsSep ":" runtimePathSuffix)}
 
       extra_env=()
-      if [ -S /run/lima-ssh-agent/agent.sock ]; then
-        extra_env+=("SSH_AUTH_SOCK=/run/lima-ssh-agent/agent.sock")
+      if ${
+        if sshAgentPath == "" then "false" else "true"
+      } && [ -S ${lib.escapeShellArg sshAgentPath} ]; then
+        extra_env+=(${lib.escapeShellArg "SSH_AUTH_SOCK=${sshAgentPath}"})
       fi
       ${lib.optionalString (agentConfigSharingSystemPackageRoot != null) ''
-        extra_env+=("PI_SYSTEM_PACKAGE_ROOT=${agentConfigSharingSystemPackageRoot}")
+        extra_env+=(${lib.escapeShellArg "PI_SYSTEM_PACKAGE_ROOT=${agentConfigSharingSystemPackageRoot}"})
       ''}
 
       # shellcheck disable=SC2016
-      exec runuser -u "$project_user" -- env -i \
+      exec ${lib.escapeShellArgs switchUserCommand} "$project_user" -- env -i \
         HOME="$project_home" \
         USER="$project_user" \
         LOGNAME="$project_user" \
-        SHELL="${pkgs.fish}/bin/fish" \
+        SHELL=${lib.escapeShellArg loginShell} \
         PATH="$path" \
         TERM="$term" \
         "''${extra_env[@]}" \
@@ -247,7 +265,7 @@ pkgs.writeShellApplication {
           project="$1"
           shift
           if [ "$#" -eq 0 ]; then
-            set -- "${pkgs.fish}/bin/fish" -l
+            set -- ${lib.escapeShellArg loginShell} -l
           fi
           require_project_act_grant "$project"
           run_as_project "$project" "$@"
@@ -271,7 +289,7 @@ pkgs.writeShellApplication {
           repo_ref="$1"
           shift
           if [ "$#" -eq 0 ]; then
-            set -- "${pkgs.fish}/bin/fish" -l
+            set -- ${lib.escapeShellArg loginShell} -l
           fi
           lookup_repo "$repo_ref"
           require_project_act_grant "$repo_project"
@@ -283,7 +301,7 @@ pkgs.writeShellApplication {
         *)
           project="$command"
           if [ "$#" -eq 0 ]; then
-            set -- "${pkgs.fish}/bin/fish" -l
+            set -- ${lib.escapeShellArg loginShell} -l
           fi
           require_project_act_grant "$project"
           run_as_project "$project" "$@"
@@ -379,7 +397,7 @@ pkgs.writeShellApplication {
             repo_ref="$1"
             shift
             if [ "$#" -eq 0 ]; then
-              set -- "${pkgs.fish}/bin/fish" -l
+              set -- ${lib.escapeShellArg loginShell} -l
             fi
             lookup_repo "$repo_ref"
             if [ "$as_root" -eq 0 ] && [ "$(id -un)" = "$repo_user" ]; then
@@ -475,7 +493,7 @@ pkgs.writeShellApplication {
           exit 66
         fi
         if [ "$#" -eq 0 ]; then
-          set -- "${pkgs.fish}/bin/fish" -l
+          set -- ${lib.escapeShellArg loginShell} -l
         fi
         lookup_project "$project"
         if [ "$as_root" -eq 0 ] && [ "$(id -un)" = "$project_user" ]; then
@@ -496,7 +514,7 @@ pkgs.writeShellApplication {
         project="$1"
         shift
         if [ "$#" -eq 0 ]; then
-          set -- "${pkgs.fish}/bin/fish" -l
+          set -- ${lib.escapeShellArg loginShell} -l
         fi
         lookup_project "$project"
         if [ "$as_root" -eq 0 ] && [ "$(id -un)" = "$project_user" ]; then
@@ -528,7 +546,7 @@ pkgs.writeShellApplication {
       *)
         project="$command"
         if [ "$#" -eq 0 ]; then
-          set -- "${pkgs.fish}/bin/fish" -l
+          set -- ${lib.escapeShellArg loginShell} -l
         fi
         lookup_project "$project"
         if [ "$as_root" -eq 0 ] && [ "$(id -un)" = "$project_user" ]; then

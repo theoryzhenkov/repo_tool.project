@@ -8,10 +8,21 @@
 }:
 
 let
+  validLookupName = value: builtins.match "[A-Za-z0-9_.-]+" value != null;
+
+  checkedLookupName =
+    context: value:
+    assert lib.assertMsg (validLookupName value) "project render: invalid ${context}: ${value}";
+    value;
+
+  checkedLookupNames = context: values: map (checkedLookupName context) values;
+
   projectCase = lib.concatMapStringsSep "\n" (
     project:
     let
-      patterns = lib.concatStringsSep "|" ([ project.name ] ++ project.aliases);
+      patterns = lib.concatStringsSep "|" (
+        checkedLookupNames "project name or alias" ([ project.name ] ++ project.aliases)
+      );
     in
     ''
       ${patterns})
@@ -24,7 +35,7 @@ let
   ) projectRecords;
 
   repoCase = lib.concatMapStringsSep "\n" (record: ''
-    ${record.lookupName})
+    ${checkedLookupName "repo lookup name" record.lookupName})
       repo_project=${lib.escapeShellArg record.project}
       repo_name=${lib.escapeShellArg record.name}
       repo_user=${lib.escapeShellArg record.ownerUser}
@@ -36,9 +47,9 @@ let
   repoProjectCase = lib.concatMapStringsSep "\n" (
     target:
     let
-      patterns = lib.concatStringsSep "|" (
-        map (name: "${target.project}:${name}") ([ target.name ] ++ target.aliases)
-      );
+      projectName = checkedLookupName "repo project name" target.project;
+      repoNames = checkedLookupNames "repo name or alias" ([ target.name ] ++ target.aliases);
+      patterns = lib.concatStringsSep "|" (map (name: "${projectName}:${name}") repoNames);
     in
     ''
       ${patterns})

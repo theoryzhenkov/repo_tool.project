@@ -1,3 +1,3 @@
 # repo_tool.project
 
-TheoR Nebula project helper CLI package factories.
+Project workspace helper CLI package factories.

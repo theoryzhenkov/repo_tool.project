@@ -324,7 +324,10 @@ fn render(frame: &mut Frame, app: &mut App) {
         "Project approvals  |  q quit  Tab focus  ↑/↓ select  a approve  r reject  v revoke  R refresh\nStatus: {}",
         app.status
     ))
-    .block(Block::default().borders(Borders::ALL).title("Nebula"));
+    .block(Block::default().borders(Borders::ALL).title(
+        std::env::var("PROJECT_APPROVALS_TUI_TITLE")
+            .unwrap_or_else(|_| "Project approvals".to_string()),
+    ));
     frame.render_widget(header, root[0]);
 
     let request_items: Vec<ListItem> = app

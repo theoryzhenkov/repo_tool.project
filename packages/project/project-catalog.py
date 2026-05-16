@@ -198,7 +198,7 @@ def validate_scope(project):
 def catalog_dir(args):
   value = args.catalog_dir or DEFAULT_CATALOG_DIR
   if not value:
-    fail("no catalog write directory configured; pass --catalog-dir or set limavm.projects.catalogWriteDir")
+    fail("no catalog write directory configured; pass --catalog-dir or configure PROJECT_CATALOG_WRITE_DIR")
   return value
 
 def show_or_write(args, name, project, *, old_name=None):
@@ -226,7 +226,9 @@ def show_or_write(args, name, project, *, old_name=None):
             break
           current = current.parent
     print(f"wrote {path}")
-    print("next: review with jj diff, then run `just lima switch nebula` to apply")
+    apply_message = os.environ.get("PROJECT_CATALOG_APPLY_MESSAGE")
+    if apply_message:
+      print(apply_message)
   else:
     path_label = str(project_path(args.catalog_dir or DEFAULT_CATALOG_DIR or "<catalog-dir>", name)) if (args.catalog_dir or DEFAULT_CATALOG_DIR) else f"<catalog-dir>/{'/'.join(name.split('.'))}/project.nix"
     action = "rename/write" if old_name else "write"

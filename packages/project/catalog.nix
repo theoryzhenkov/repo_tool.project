@@ -4,6 +4,7 @@
   projectCatalogJson,
   userPrefix ? "usr.prj_",
   catalogWriteDir ? "",
+  applyMessage ? null,
 }:
 
 let
@@ -16,6 +17,9 @@ pkgs.writeShellApplication {
     export PROJECT_CATALOG_JSON=${lib.escapeShellArg projectCatalogJson}
     export PROJECT_USER_PREFIX=${lib.escapeShellArg userPrefix}
     export PROJECT_CATALOG_WRITE_DIR=${lib.escapeShellArg catalogWriteDir}
+    ${lib.optionalString (
+      applyMessage != null
+    ) "export PROJECT_CATALOG_APPLY_MESSAGE=${lib.escapeShellArg applyMessage}"}
     exec python3 ${lib.escapeShellArg projectCatalogScript} "$@"
   '';
 }
