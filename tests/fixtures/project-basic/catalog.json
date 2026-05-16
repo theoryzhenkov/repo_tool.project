@@ -1,0 +1,32 @@
+{
+  "alpha": {
+    "aliases": ["a"],
+    "home": "/tmp/project-alpha-home",
+    "repoTargets": {
+      "repo.alpha": {
+        "aliases": ["alpha-repo"],
+        "description": "Alpha repo",
+        "git": {"branch": null, "remote": "origin", "url": "git@example.invalid:alpha.git"},
+        "home": "/tmp/project-alpha-home",
+        "mode": "0750",
+        "name": "repo.alpha",
+        "ownerUser": "usr.prj_alpha",
+        "path": "/tmp/project-alpha-home/src",
+        "primary": true,
+        "project": "alpha",
+        "synthetic": false
+      }
+    },
+    "scope": {"enable": true, "include": ["beta"], "includeDescendants": false},
+    "user": "usr.prj_alpha",
+    "workDir": "/tmp/project-alpha-home/src"
+  },
+  "beta": {
+    "aliases": [],
+    "home": "/tmp/project-beta-home",
+    "repoTargets": {},
+    "scope": {"enable": false, "include": [], "includeDescendants": false},
+    "user": "usr.prj_beta",
+    "workDir": "/tmp/project-beta-home/src"
+  }
+}

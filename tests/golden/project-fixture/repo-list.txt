@@ -1,0 +1,1 @@
+alpha	repo.alpha	/tmp/project-alpha-home/src aliases=alpha-repo

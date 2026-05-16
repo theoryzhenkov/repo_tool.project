@@ -1,0 +1,27 @@
+Usage:
+  project list
+  project user <name>
+  project path <name>
+  project enter <name> [command...]
+  project here [command...]
+  project run <name> <command...>
+  project repo list [project]
+  project repo path <repo-ref>
+  project repo user <repo-ref>
+  project repo show <repo-ref> [--json]
+  project repo enter <repo-ref> [command...]
+  project new <name> [options] [--write]
+  project edit <name> [options] [--write]
+  project rename <old-name> <new-name> [options] [--write]
+  project request access <name> [--mode read|act] [--ttl 1h] [--reason ...]
+  project request sudo -- <command...>
+  project requests
+  project show <request-id>
+  project approve <request-id>
+  project reject <request-id>
+  project result <request-id>
+  project grants
+  project revoke <grant-id>
+  project approvals
+  project approval list|show|approve|reject|result|revoke|tui [...]
+  project <name> [command...]

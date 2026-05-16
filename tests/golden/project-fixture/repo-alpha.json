@@ -1,0 +1,19 @@
+{
+    "aliases": [
+        "alpha-repo"
+    ],
+    "description": "Alpha repo",
+    "git": {
+        "branch": null,
+        "remote": "origin",
+        "url": "git@example.invalid:alpha.git"
+    },
+    "home": "/tmp/project-alpha-home",
+    "mode": "0750",
+    "name": "repo.alpha",
+    "ownerUser": "usr.prj_alpha",
+    "path": "/tmp/project-alpha-home/src",
+    "primary": true,
+    "project": "alpha",
+    "synthetic": false
+}
