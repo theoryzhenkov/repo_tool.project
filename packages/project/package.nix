@@ -9,6 +9,7 @@
 
 pkgs.symlinkJoin {
   name = "project";
+  nativeBuildInputs = [ pkgs.makeWrapper ];
   paths = [
     projectCli
     projectApprovalsTui
@@ -20,4 +21,8 @@ pkgs.symlinkJoin {
   ++ pkgs.lib.optionals (projectCatalogTool != null) [
     projectCatalogTool
   ];
+  postBuild = ''
+    rm -f "$out/bin/project"
+    makeWrapper ${projectCli}/bin/project "$out/bin/project"
+  '';
 }

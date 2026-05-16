@@ -20,6 +20,8 @@ SETFACL = os.environ["SETFACL"]
 REQUESTS = ROOT / "requests"
 RESULTS = ROOT / "results"
 GRANTS = ROOT / "grants"
+RUNS = ROOT / "runs"
+LOGS = ROOT / "logs"
 
 def fail(message, code=64):
   print(f"project: {message}", file=sys.stderr)
@@ -79,7 +81,7 @@ def resolve_project(name):
   fail(f"unknown project: {name}")
 
 def ensure_dirs():
-  for path in [REQUESTS, RESULTS, GRANTS]:
+  for path in [REQUESTS, RESULTS, GRANTS, RUNS, LOGS]:
     path.mkdir(parents=True, exist_ok=True)
 
 def request_path(request_id):
@@ -90,6 +92,12 @@ def grant_path(grant_id):
 
 def result_path(request_id):
   return RESULTS / f"{request_id}.json"
+
+def run_path(request_id):
+  return RUNS / f"{request_id}.json"
+
+def log_path(request_id):
+  return LOGS / f"{request_id}.log"
 
 def write_request(payload):
   ensure_dirs()
@@ -303,14 +311,14 @@ def revoke_grant(grant_id, missing_ok=False):
   print(f"revoked {grant_id}: {requester} access to {grant['project']}")
   return True
 
-def write_result(request, completed):
+def write_result(request, returncode, stdout, stderr):
   payload = {
     "id": request["id"],
     "requester": request["requester"],
     "argv": request["argv"],
-    "returncode": completed.returncode,
-    "stdout": completed.stdout,
-    "stderr": completed.stderr,
+    "returncode": returncode,
+    "stdout": stdout,
+    "stderr": stderr,
     "finishedAt": now(),
   }
   path = result_path(request["id"])
@@ -322,25 +330,141 @@ def write_result(request, completed):
   os.chown(path, uid, gid)
   os.chmod(path, 0o640)
 
-def run_sudo_request(request):
-  cwd = request.get("cwd") or "/"
+def load_run(run_id):
+  path = run_path(run_id)
+  if not path.exists():
+    fail(f"unknown command run: {run_id}", 66)
+  with open(path, "r", encoding="utf-8") as fh:
+    return json.load(fh)
+
+def write_run(run):
+  ensure_dirs()
+  path = run_path(run["id"])
+  with open(path, "w", encoding="utf-8") as fh:
+    json.dump(run, fh, indent=2, sort_keys=True)
+    fh.write("\n")
+  os.chmod(path, 0o644)
+
+def append_log(run_id, text):
+  ensure_dirs()
+  with open(log_path(run_id), "a", encoding="utf-8", errors="replace") as fh:
+    fh.write(text)
+
+def prune_runs(keep=100):
+  runs = []
+  for path in RUNS.glob("*.json"):
+    try:
+      with open(path, "r", encoding="utf-8") as fh:
+        run = json.load(fh)
+      runs.append((int(run.get("finishedAt") or run.get("startedAt") or 0), path.stem))
+    except Exception:
+      continue
+  for _, run_id in sorted(runs, reverse=True)[keep:]:
+    run_path(run_id).unlink(missing_ok=True)
+    log_path(run_id).unlink(missing_ok=True)
+
+def run_summary(run):
+  status = run.get("status", "unknown")
+  returncode = run.get("returncode")
+  code = "" if returncode is None else str(returncode)
+  return f"{run['id']}\t{status}\t{code}\t{run.get('requester', '')}\t{compact_text(' '.join(run.get('argv', [])))}"
+
+def cmd_runs(args):
+  ensure_dirs()
+  runs = []
+  for path in RUNS.glob("*.json"):
+    try:
+      run = load_run(path.stem)
+    except Exception:
+      continue
+    runs.append((int(run.get("finishedAt") or run.get("startedAt") or 0), run))
+  for _, run in sorted(runs, reverse=True)[:100]:
+    print(run_summary(run))
+
+def cmd_logs(args):
+  path = log_path(args.id)
+  if not path.exists():
+    fail(f"no logs for command run: {args.id}", 66)
+  with open(path, "r", encoding="utf-8", errors="replace") as fh:
+    print(fh.read(), end="")
+
+def finish_sudo_run(run, returncode, stdout, stderr):
+  run["status"] = "succeeded" if returncode == 0 else "failed"
+  run["returncode"] = returncode
+  run["finishedAt"] = now()
+  write_run(run)
+  write_result(run, returncode, stdout, stderr)
+  prune_runs()
+
+def execute_sudo_run(run):
+  cwd = run.get("cwd") or "/"
   if not os.path.isdir(cwd):
     cwd = "/"
-  completed = subprocess.run(
-    request["argv"],
-    cwd=cwd,
-    text=True,
-    capture_output=True,
-    timeout=int(request["timeoutSeconds"]),
+  append_log(run["id"], f"$ {' '.join(run['argv'])}\n")
+  try:
+    completed = subprocess.run(
+      run["argv"],
+      cwd=cwd,
+      text=True,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
+      timeout=int(run["timeoutSeconds"]),
+    )
+    output = completed.stdout or ""
+    if output:
+      append_log(run["id"], output)
+    append_log(run["id"], f"\n[exit {completed.returncode}]\n")
+    finish_sudo_run(run, completed.returncode, output, "")
+  except subprocess.TimeoutExpired as exc:
+    output = exc.stdout or ""
+    if isinstance(output, bytes):
+      output = output.decode(errors="replace")
+    if output:
+      append_log(run["id"], output)
+    message = f"\n[timed out after {run['timeoutSeconds']}s]\n"
+    append_log(run["id"], message)
+    finish_sudo_run(run, 124, output, message)
+
+def start_sudo_request(request):
+  run = dict(request)
+  run.update({
+    "status": "running",
+    "startedAt": now(),
+    "logPath": str(log_path(request["id"])),
+  })
+  write_run(run)
+  log_path(request["id"]).write_text("", encoding="utf-8")
+  os.chmod(log_path(request["id"]), 0o644)
+  subprocess.Popen(
+    [sys.executable, __file__, "start-sudo-run", request["id"]],
+    stdin=subprocess.DEVNULL,
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+    start_new_session=True,
+    close_fds=True,
+    env=os.environ.copy(),
   )
-  write_result(request, completed)
-  print(f"command exited {completed.returncode}; requester can read: project result {request['id']}")
-  if completed.stdout:
-    print("--- stdout ---")
-    print(completed.stdout, end="")
-  if completed.stderr:
-    print("--- stderr ---", file=sys.stderr)
-    print(completed.stderr, end="", file=sys.stderr)
+  print(f"started command run {request['id']}; logs: project grant logs {request['id']}")
+
+def run_sudo_request(request):
+  run = dict(request)
+  run.update({"status": "running", "startedAt": now(), "logPath": str(log_path(request["id"]))})
+  write_run(run)
+  log_path(request["id"]).write_text("", encoding="utf-8")
+  os.chmod(log_path(request["id"]), 0o644)
+  execute_sudo_run(run)
+  result = load_run(request["id"])
+  print(f"command exited {result.get('returncode')}; requester can read: project result {request['id']}")
+  logs = log_path(request["id"]).read_text(encoding="utf-8", errors="replace")
+  if logs:
+    print(logs, end="")
+
+def cmd_start_sudo_run(args):
+  require_root()
+  run = load_run(args.id)
+  if run.get("status") != "running":
+    return
+  execute_sudo_run(run)
 
 def cmd_approve(args):
   require_root()
@@ -353,7 +477,10 @@ def cmd_approve(args):
   if request["type"] == "access":
     apply_access_grant(request)
   elif request["type"] == "sudo":
-    run_sudo_request(request)
+    if args.background:
+      start_sudo_request(request)
+    else:
+      run_sudo_request(request)
   else:
     fail(f"unknown request type: {request['type']}")
   close_request(request["id"])
@@ -366,6 +493,8 @@ def cmd_result(args):
     result = json.load(fh)
   print(f"id: {result['id']}")
   print(f"returncode: {result['returncode']}")
+  if log_path(args.id).exists():
+    print(f"logs: {log_path(args.id)}")
   print("--- stdout ---")
   print(result.get("stdout", ""), end="")
   print("--- stderr ---")
@@ -452,10 +581,19 @@ def main(argv):
   approve = sub.add_parser("approve")
   approve.add_argument("id")
   approve.add_argument("--yes", action="store_true")
+  approve.add_argument("--background", action="store_true")
   approve.set_defaults(func=cmd_approve)
   result = sub.add_parser("result")
   result.add_argument("id")
   result.set_defaults(func=cmd_result)
+  runs = sub.add_parser("runs")
+  runs.set_defaults(func=cmd_runs)
+  logs = sub.add_parser("logs")
+  logs.add_argument("id")
+  logs.set_defaults(func=cmd_logs)
+  start_run = sub.add_parser("start-sudo-run")
+  start_run.add_argument("id")
+  start_run.set_defaults(func=cmd_start_sudo_run)
   grants = sub.add_parser("grants")
   grants.set_defaults(func=cmd_grants)
   reject = sub.add_parser("reject")

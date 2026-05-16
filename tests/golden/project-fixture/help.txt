@@ -20,8 +20,11 @@ Usage:
   project approve <request-id>
   project reject <request-id>
   project result <request-id>
-  project grants
+  project logs <request-id>
+  project runs
+  project grants [tui]
   project revoke <grant-id>
-  project approvals
-  project approval list|show|approve|reject|result|revoke|tui [...]
+  project grant list|show|approve|reject|result|logs|runs|revoke|tui [...]
+  project approvals  # compatibility alias for project grants tui
+  project approval ...  # compatibility alias for project grant ...
   project <name> [command...]

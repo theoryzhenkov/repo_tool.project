@@ -68,10 +68,13 @@ pkgs.writeShellApplication {
       project approve <request-id>
       project reject <request-id>
       project result <request-id>
-      project grants
+      project logs <request-id>
+      project runs
+      project grants [tui]
       project revoke <grant-id>
-      project approvals
-      project approval list|show|approve|reject|result|revoke|tui [...]
+      project grant list|show|approve|reject|result|logs|runs|revoke|tui [...]
+      project approvals  # compatibility alias for project grants tui
+      project approval ...  # compatibility alias for project grant ...
       project <name> [command...]
     USAGE
     }
@@ -418,7 +421,28 @@ pkgs.writeShellApplication {
       approvals)
         exec ${projectApprovalsTui}/bin/project-approvals-tui "$@"
         ;;
-      approval)
+      grants)
+        subcommand="''${1:-list}"
+        if [ "$#" -gt 0 ]; then
+          shift
+        fi
+        case "$subcommand" in
+          list)
+            if [ "$as_root" -eq 0 ] && [ "$(id -un)" = ${lib.escapeShellArg ownerUser} ]; then
+              require_root grants "$@"
+            fi
+            exec ${projectApprovalTool}/bin/project-approval grants "$@"
+            ;;
+          tui|approvals)
+            exec ${projectApprovalsTui}/bin/project-approvals-tui "$@"
+            ;;
+          *)
+            usage >&2
+            exit 64
+            ;;
+        esac
+        ;;
+      grant|approval)
         subcommand="''${1:-list}"
         if [ "$#" -gt 0 ]; then
           shift
@@ -445,6 +469,12 @@ pkgs.writeShellApplication {
           result)
             exec ${projectApprovalTool}/bin/project-approval result "$@"
             ;;
+          logs)
+            exec ${projectApprovalTool}/bin/project-approval logs "$@"
+            ;;
+          runs|history)
+            exec ${projectApprovalTool}/bin/project-approval runs "$@"
+            ;;
           tui|approvals)
             exec ${projectApprovalsTui}/bin/project-approvals-tui "$@"
             ;;
@@ -457,10 +487,10 @@ pkgs.writeShellApplication {
       new|edit|rename)
         exec ${projectCatalogTool}/bin/project-catalog "$command" "$@"
         ;;
-      request|result)
+      request|result|logs|runs)
         exec ${projectApprovalTool}/bin/project-approval "$command" "$@"
         ;;
-      requests|show|grants)
+      requests|show)
         if [ "$as_root" -eq 0 ] && [ "$(id -un)" = ${lib.escapeShellArg ownerUser} ]; then
           require_root "$command" "$@"
         fi
