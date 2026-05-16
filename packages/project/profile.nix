@@ -119,5 +119,7 @@ pkgs.callPackage (projectModules + "/package.nix") {
     projectCli
     projectApprovalsTui
     projectCompletions
+    projectApprovalTool
+    projectCatalogTool
     ;
 }

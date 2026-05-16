@@ -3,6 +3,8 @@
   projectCli,
   projectApprovalsTui,
   projectCompletions,
+  projectApprovalTool ? null,
+  projectCatalogTool ? null,
 }:
 
 pkgs.symlinkJoin {
@@ -11,5 +13,11 @@ pkgs.symlinkJoin {
     projectCli
     projectApprovalsTui
     projectCompletions
+  ]
+  ++ pkgs.lib.optionals (projectApprovalTool != null) [
+    projectApprovalTool
+  ]
+  ++ pkgs.lib.optionals (projectCatalogTool != null) [
+    projectCatalogTool
   ];
 }
