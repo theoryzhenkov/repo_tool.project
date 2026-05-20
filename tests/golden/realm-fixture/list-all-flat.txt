@@ -1,0 +1,3 @@
+project	alpha	usr.prj_alpha	/tmp/project-alpha-home/src aliases=a
+repo	alpha	repo.alpha	/tmp/project-alpha-home/src aliases=alpha-repo
+project	beta	usr.prj_beta	/tmp/project-beta-home/src

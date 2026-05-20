@@ -11,11 +11,19 @@ smoke:
     #!/usr/bin/env bash
     set -euo pipefail
     system="$(nix eval --impure --raw --expr 'builtins.currentSystem')"
-    pkg="$(nix build ".#packages.$system.project-fixture" --print-out-paths --no-link)"
-    test ! -L "$pkg/bin/project"
-    test "$(readlink -f "$pkg/bin/project")" = "$pkg/bin/project"
-    "$pkg/bin/project" help | diff -u tests/golden/project-fixture/help.txt -
-    "$pkg/bin/project" list | diff -u tests/golden/project-fixture/list.txt -
-    "$pkg/bin/project" repo list | diff -u tests/golden/project-fixture/repo-list.txt -
-    "$pkg/bin/project" repo show repo.alpha --json | python -m json.tool | diff -u tests/golden/project-fixture/repo-alpha.json -
-    "$pkg/bin/project" repo path alpha-repo | grep -qx '/tmp/project-alpha-home/src'
+    pkg="$(nix build ".#packages.$system.realm-fixture" --print-out-paths --no-link)"
+    test ! -e "$pkg/bin/project"
+    test ! -L "$pkg/bin/realm"
+    test "$(readlink -f "$pkg/bin/realm")" = "$pkg/bin/realm"
+    "$pkg/bin/realm" help | diff -u tests/golden/realm-fixture/help.txt -
+    "$pkg/bin/realm" list | diff -u tests/golden/realm-fixture/list-tree.txt -
+    "$pkg/bin/realm" list --flat | diff -u tests/golden/realm-fixture/list-flat.txt -
+    "$pkg/bin/realm" list beta | diff -u <(printf 'beta\n') -
+    "$pkg/bin/realm" list --flat beta | diff -u <(printf 'beta\n') -
+    "$pkg/bin/realm" list -a | diff -u tests/golden/realm-fixture/list-all-tree.txt -
+    "$pkg/bin/realm" list -a --flat | diff -u tests/golden/realm-fixture/list-all-flat.txt -
+    "$pkg/bin/realm" list -r | diff -u tests/golden/realm-fixture/repo-list.txt -
+    "$pkg/bin/realm" show -r repo.alpha --json | python -m json.tool | diff -u tests/golden/realm-fixture/repo-alpha.json -
+    "$pkg/bin/realm" path -r alpha-repo | grep -qx /tmp/project-alpha-home/src
+    mkdir -p /tmp/project-alpha-home/src
+    (cd /tmp/project-alpha-home/src && "$pkg/bin/realm" list -r --here) | diff -u tests/golden/realm-fixture/repo-list.txt -

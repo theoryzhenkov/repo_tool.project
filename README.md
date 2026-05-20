@@ -1,3 +1,3 @@
-# repo_tool.project
+# repo_tool.realm
 
-Project workspace helper CLI package factories.
+Realm workspace helper CLI package factories.

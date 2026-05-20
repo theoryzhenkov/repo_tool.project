@@ -1,0 +1,22 @@
+Usage:
+  realm list [--project|--repo] [--all|-a] [--here] [--flat] [project]
+  realm user [--project|--repo] [--here] <name-or-repo-ref>
+  realm path [--project|--repo] [--here] <name-or-repo-ref>
+  realm show [--project|--repo] [--here] [--json] <name-or-repo-ref>
+  realm enter [--project|--repo] [--here] <name-or-repo-ref> [command...]
+  realm run [--project|--repo] [--here] <name-or-repo-ref> <command...>
+  realm new <name> [options] [--write]
+  realm edit <name> [options] [--write]
+  realm rename <old-name> <new-name> [options] [--write]
+  realm request access <project> [--mode read|act] [--ttl 1h] [--reason ...]
+  realm request sudo -- <command...>
+  realm requests
+  realm grant show <request-id>
+  realm approve <request-id>
+  realm reject <request-id>
+  realm result <request-id>
+  realm logs <request-id>
+  realm runs
+  realm grants [tui]
+  realm revoke <grant-id>
+  realm grant list|show|approve|reject|result|logs|runs|revoke|tui [...]

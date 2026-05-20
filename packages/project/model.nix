@@ -264,6 +264,8 @@ let
         [
           {
             project = name;
+            repoName = null;
+            synthetic = true;
             user = projectUser name project;
             home = projectHome name project;
             path = workDir;
@@ -271,6 +273,8 @@ let
         ]
         ++ map (repoName: {
           project = name;
+          inherit repoName;
+          synthetic = (projectRepoTargets name project).${repoName}.synthetic or false;
           user = projectUser name project;
           home = projectHome name project;
           path = (projectRepoTargets name project).${repoName}.path;

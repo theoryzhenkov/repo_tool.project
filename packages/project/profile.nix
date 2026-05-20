@@ -7,7 +7,7 @@
     if projectModel == null then
       throw "projectCatalogJson or projectModel is required"
     else
-      builtins.toFile "project-catalog.json" (builtins.toJSON projectModel.enrichedProjectItems),
+      builtins.toFile "realm-catalog.json" (builtins.toJSON projectModel.enrichedProjectItems),
   projectRecords ? projectModel.projectRecords,
   repoLookupRecords ? projectModel.repoLookupRecords,
   declaredRepoTargetRecords ? projectModel.declaredRepoTargetRecords,
@@ -22,7 +22,8 @@
   catalogWriteDir ? "",
   catalogApplyMessage ? null,
   agentConfigSharingSystemPackageRoot ? null,
-  grantsTuiTitle ? "Project grants",
+  grantsTuiTitle ? "Realm grants",
+  enableGrantsTui ? true,
   sudoCommand ? [
     "/run/wrappers/bin/sudo"
     "-n"
@@ -72,10 +73,20 @@ let
       grantRoot
       ;
   };
-  projectGrantsTui = pkgs.callPackage (projectModules + "/grants-tui.nix") {
-    inherit pkgs;
-    title = grantsTuiTitle;
-  };
+  projectGrantsTui =
+    if enableGrantsTui then
+      pkgs.callPackage (projectModules + "/grants-tui.nix") {
+        inherit pkgs;
+        title = grantsTuiTitle;
+      }
+    else
+      pkgs.writeShellApplication {
+        name = "realm-grants-tui";
+        text = ''
+          echo "realm-grants-tui: disabled for this package" >&2
+          exit 69
+        '';
+      };
   projectCli = pkgs.callPackage projectModules {
     inherit
       lib

@@ -11,11 +11,11 @@ import uuid
 from pathlib import Path
 
 def load_catalog():
-  with open(os.environ["PROJECT_CATALOG_JSON"], "r", encoding="utf-8") as fh:
+  with open(os.environ["REALM_CATALOG_JSON"], "r", encoding="utf-8") as fh:
     return json.load(fh)
 
 CATALOG = load_catalog()
-ROOT = Path(os.environ["PROJECT_GRANT_ROOT"])
+ROOT = Path(os.environ["REALM_GRANT_ROOT"])
 SETFACL = os.environ["SETFACL"]
 REQUESTS = ROOT / "requests"
 RESULTS = ROOT / "results"
@@ -24,7 +24,7 @@ RUNS = ROOT / "runs"
 LOGS = ROOT / "logs"
 
 def fail(message, code=64):
-  print(f"project: {message}", file=sys.stderr)
+  print(f"realm: {message}", file=sys.stderr)
   raise SystemExit(code)
 
 def now():
@@ -58,7 +58,7 @@ def current_user():
 def project_user(name, project):
   if project.get("user"):
     return project["user"]
-  return os.environ.get("PROJECT_USER_PREFIX", "usr.prj_") + name
+  return os.environ.get("REALM_PROJECT_USER_PREFIX", "usr.prj_") + name
 
 def project_home(name, project):
   if project.get("home"):
@@ -68,7 +68,7 @@ def project_home(name, project):
 def project_workdir(name, project):
   if project.get("workDir"):
     return project["workDir"]
-  return project_home(name, project) + "/" + os.environ.get("PROJECT_WORKDIR_NAME", "src")
+  return project_home(name, project) + "/" + os.environ.get("REALM_PROJECT_WORKDIR_NAME", "src")
 
 def resolve_project(name):
   if name in CATALOG:
@@ -78,7 +78,7 @@ def resolve_project(name):
     return matches[0]
   if len(matches) > 1:
     fail(f"ambiguous project alias: {name}")
-  fail(f"unknown project: {name}")
+  fail(f"unknown realm: {name}")
 
 def ensure_dirs():
   for path in [REQUESTS, RESULTS, GRANTS, RUNS, LOGS]:
@@ -118,8 +118,8 @@ def write_request(payload):
     fh.write("\n")
   os.chmod(path, 0o600)
   print(f"request {request_id} created")
-  print(f"ask the owner to review with: project show {request_id}")
-  print(f"and approve with:        project approve {request_id}")
+  print(f"ask the owner to review with: realm grant show {request_id}")
+  print(f"and approve with:        realm approve {request_id}")
 
 def load_request(request_id):
   path = request_path(request_id)
@@ -144,7 +144,7 @@ def summarize_request(request):
   ]
   if request["type"] == "access":
     lines += [
-      f"project:   {request['project']}",
+      f"realm:   {request['project']}",
       f"mode:      {request.get('mode', 'read')}",
       f"ttl:       {request['ttlSeconds']}s",
     ]
@@ -213,7 +213,7 @@ def cmd_request_sudo(args):
 
 def require_root():
   if os.geteuid() != 0:
-    fail("this command must run as root; owner can use `sudo project ...`", 77)
+    fail("this command must run as root; owner can use `sudo realm ...`", 77)
 
 def setfacl(*args):
   subprocess.run([SETFACL, *args], check=True)
@@ -444,7 +444,7 @@ def start_sudo_request(request):
     close_fds=True,
     env=os.environ.copy(),
   )
-  print(f"started command run {request['id']}; logs: project grant logs {request['id']}")
+  print(f"started command run {request['id']}; logs: realm grant logs {request['id']}")
 
 def run_sudo_request(request):
   run = dict(request)
@@ -454,7 +454,7 @@ def run_sudo_request(request):
   os.chmod(log_path(request["id"]), 0o644)
   execute_sudo_run(run)
   result = load_run(request["id"])
-  print(f"command exited {result.get('returncode')}; requester can read: project result {request['id']}")
+  print(f"command exited {result.get('returncode')}; requester can read: realm result {request['id']}")
   logs = log_path(request["id"]).read_text(encoding="utf-8", errors="replace")
   if logs:
     print(logs, end="")
@@ -556,7 +556,7 @@ def cmd_expire_grants(args):
       revoke_grant(path.stem, missing_ok=True)
 
 def main(argv):
-  parser = argparse.ArgumentParser(prog="project")
+  parser = argparse.ArgumentParser(prog="realm-grant")
   sub = parser.add_subparsers(dest="command", required=True)
 
   req = sub.add_parser("request")

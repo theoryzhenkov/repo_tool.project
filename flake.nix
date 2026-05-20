@@ -1,5 +1,5 @@
 {
-  description = "Project workspace helper CLI package factories";
+  description = "Realm workspace helper CLI package factories";
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
@@ -25,7 +25,7 @@
           };
         in
         {
-          project-fixture = projectFixture;
+          realm-fixture = projectFixture;
           default = projectFixture;
         }
       );

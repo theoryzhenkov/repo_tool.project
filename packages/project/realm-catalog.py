@@ -12,15 +12,15 @@ COMPONENT_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 USER_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 def load_catalog():
-  with open(os.environ["PROJECT_CATALOG_JSON"], "r", encoding="utf-8") as fh:
+  with open(os.environ["REALM_CATALOG_JSON"], "r", encoding="utf-8") as fh:
     return json.load(fh)
 
 CATALOG = load_catalog()
-USER_PREFIX = os.environ.get("PROJECT_USER_PREFIX", "usr.prj_")
-DEFAULT_CATALOG_DIR = os.environ.get("PROJECT_CATALOG_WRITE_DIR", "")
+USER_PREFIX = os.environ.get("REALM_PROJECT_USER_PREFIX", "usr.prj_")
+DEFAULT_CATALOG_DIR = os.environ.get("REALM_CATALOG_WRITE_DIR", "")
 
 def fail(message, code=64):
-  print(f"project: {message}", file=sys.stderr)
+  print(f"realm: {message}", file=sys.stderr)
   raise SystemExit(code)
 
 def validate_name(name):
@@ -72,7 +72,6 @@ def copy_project(project):
     "workDirMode": project.get("workDirMode", "0750"),
     "defaultRepo": project.get("defaultRepo"),
     "repos": {name: copy_repo(repo) for name, repo in project.get("repos", {}).items()},
-    "checkouts": {name: copy_repo(repo) for name, repo in project.get("checkouts", {}).items()},
     "scope": {
       "enable": project.get("scope", {}).get("enable", False),
       "includeDescendants": project.get("scope", {}).get("includeDescendants", False),
@@ -146,9 +145,6 @@ def render_project(project):
     lines.append(f"  defaultRepo = {nix_string(project['defaultRepo'])};")
   if project.get("repos"):
     lines.append(render_repos_attr("repos", project["repos"]))
-  if project.get("checkouts"):
-    lines.append(render_repos_attr("checkouts", project["checkouts"]))
-
   scope = project.get("scope", {})
   if scope.get("enable") or scope.get("includeDescendants") or scope.get("include"):
     lines.append("  scope = {")
@@ -180,7 +176,7 @@ def validate_aliases(project_name, project, excluding=()):
     if alias == project_name:
       fail(f"alias duplicates the project name: {alias}")
     if alias in seen:
-      fail(f"duplicate alias on project: {alias}")
+      fail(f"duplicate alias on realm: {alias}")
     if alias in occupied:
       fail(f"alias collides with another project or alias: {alias}")
     seen.add(alias)
@@ -193,12 +189,12 @@ def validate_scope(project):
   for included in project.get("scope", {}).get("include", []):
     validate_name(included)
     if included not in CATALOG:
-      fail(f"scope include references unknown project: {included}")
+      fail(f"scope include references unknown realm: {included}")
 
 def catalog_dir(args):
   value = args.catalog_dir or DEFAULT_CATALOG_DIR
   if not value:
-    fail("no catalog write directory configured; pass --catalog-dir or configure PROJECT_CATALOG_WRITE_DIR")
+    fail("no catalog write directory configured; pass --catalog-dir or configure REALM_CATALOG_WRITE_DIR")
   return value
 
 def show_or_write(args, name, project, *, old_name=None):
@@ -226,7 +222,7 @@ def show_or_write(args, name, project, *, old_name=None):
             break
           current = current.parent
     print(f"wrote {path}")
-    apply_message = os.environ.get("PROJECT_CATALOG_APPLY_MESSAGE")
+    apply_message = os.environ.get("REALM_CATALOG_APPLY_MESSAGE")
     if apply_message:
       print(apply_message)
   else:
@@ -286,7 +282,7 @@ def cmd_new(args):
 def cmd_edit(args):
   validate_name(args.name)
   if args.name not in CATALOG:
-    fail(f"unknown project: {args.name}")
+    fail(f"unknown realm: {args.name}")
   project = apply_common_options(copy_project(CATALOG[args.name]), args)
   validate_aliases(args.name, project, excluding=[args.name])
   validate_project_user(args.name, project)
@@ -297,7 +293,7 @@ def cmd_rename(args):
   validate_name(args.old_name)
   validate_name(args.new_name)
   if args.old_name not in CATALOG:
-    fail(f"unknown project: {args.old_name}")
+    fail(f"unknown realm: {args.old_name}")
   if args.new_name in CATALOG:
     fail(f"target project already exists: {args.new_name}")
   if args.new_name in lookup_space(excluding=[args.old_name]):
@@ -330,7 +326,7 @@ def add_common(parser):
   parser.add_argument("--write", action="store_true", help="write the project.nix change instead of printing it")
 
 def main(argv):
-  parser = argparse.ArgumentParser(prog="project")
+  parser = argparse.ArgumentParser(prog="realm-catalog")
   sub = parser.add_subparsers(dest="command", required=True)
 
   new = sub.add_parser("new", help="create a new project definition")

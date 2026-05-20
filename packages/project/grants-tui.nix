@@ -1,17 +1,17 @@
 {
   pkgs,
   makeWrapper,
-  title ? "Project grants",
+  title ? "Realm grants",
 }:
 
 pkgs.rustPlatform.buildRustPackage {
-  pname = "project-grants-tui";
+  pname = "realm-grants-tui";
   version = "0.1.0";
-  src = ../project-grants-tui;
-  cargoLock.lockFile = ../project-grants-tui/Cargo.lock;
+  src = ../realm-grants-tui;
+  cargoLock.lockFile = ../realm-grants-tui/Cargo.lock;
   nativeBuildInputs = [ makeWrapper ];
   postInstall = ''
-    wrapProgram "$out/bin/project-grants-tui" \
-      --set PROJECT_GRANTS_TUI_TITLE ${pkgs.lib.escapeShellArg title}
+    wrapProgram "$out/bin/realm-grants-tui" \
+      --set REALM_GRANTS_TUI_TITLE ${pkgs.lib.escapeShellArg title}
   '';
 }

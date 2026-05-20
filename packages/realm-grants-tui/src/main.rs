@@ -426,11 +426,11 @@ fn render(frame: &mut Frame, app: &mut App) {
         .split(frame.area());
 
     let header = Paragraph::new(format!(
-        "Project grants  |  q quit  Tab focus  ↑/↓ select  a approve  r reject  v revoke  PgUp/PgDn logs  R refresh\nStatus: {}",
+        "Realm grants  |  q quit  Tab focus  ↑/↓ select  a approve  r reject  v revoke  PgUp/PgDn logs  R refresh\nStatus: {}",
         app.status
     ))
     .block(Block::default().borders(Borders::ALL).title(
-        std::env::var("PROJECT_GRANTS_TUI_TITLE").unwrap_or_else(|_| "Project grants".to_string()),
+        std::env::var("REALM_GRANTS_TUI_TITLE").unwrap_or_else(|_| "Realm grants".to_string()),
     ));
     frame.render_widget(header, root[0]);
 

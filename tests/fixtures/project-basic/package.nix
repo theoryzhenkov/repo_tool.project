@@ -45,7 +45,8 @@ pkgs.callPackage (projectModules + "/profile.nix") {
   ownerUser = username;
   userPrefix = "usr.prj_";
   workDirName = "src";
-  grantRoot = "/tmp/project-fixture-grants";
+  grantRoot = "/tmp/realm-fixture-grants";
   catalogWriteDir = "";
   agentConfigSharingSystemPackageRoot = null;
+  enableGrantsTui = false;
 }
