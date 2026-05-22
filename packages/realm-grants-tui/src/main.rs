@@ -125,9 +125,9 @@ impl App {
         let previous_grant = self.selected_grant_id();
         let previous_run = self.selected_run_id();
 
-        let requests_text = run_project(&["requests"]).unwrap_or_else(|e| format!("error: {e}"));
-        let grants_text = run_project(&["grants"]).unwrap_or_else(|e| format!("error: {e}"));
-        let runs_text = run_project(&["runs"]).unwrap_or_else(|e| format!("error: {e}"));
+        let requests_text = run_realm(&["requests"]).unwrap_or_else(|e| format!("error: {e}"));
+        let grants_text = run_realm(&["grants"]).unwrap_or_else(|e| format!("error: {e}"));
+        let runs_text = run_realm(&["runs"]).unwrap_or_else(|e| format!("error: {e}"));
 
         self.requests = parse_requests(&requests_text);
         self.grants = parse_grants(&grants_text);
@@ -159,7 +159,7 @@ impl App {
     fn refresh_detail_preserving_scroll(&mut self) {
         self.selected_detail = match self.focus {
             Focus::Requests | Focus::Detail => match self.selected_request_id() {
-                Some(id) => run_project(&["show", &id]).unwrap_or_else(|e| format!("error: {e}")),
+                Some(id) => run_realm(&["grant", "show", &id]).unwrap_or_else(|e| format!("error: {e}")),
                 None => "No pending request selected.".to_string(),
             },
             Focus::Grants => match self.selected_grant_id() {
@@ -167,7 +167,7 @@ impl App {
                 None => "No active grant selected.".to_string(),
             },
             Focus::Runs => match self.selected_run_id() {
-                Some(id) => run_project(&["logs", &id]).unwrap_or_else(|e| format!("error: {e}")),
+                Some(id) => run_realm(&["logs", &id]).unwrap_or_else(|e| format!("error: {e}")),
                 None => "No command run selected.".to_string(),
             },
         };
@@ -241,7 +241,7 @@ impl App {
     fn approve(&mut self) {
         if let Some(id) = self.selected_request_id() {
             self.status = first_line(
-                &run_project(&["grant", "approve", &id, "--yes", "--background"])
+                &run_realm(&["grant", "approve", &id, "--yes", "--background"])
                     .unwrap_or_else(|e| format!("error: {e}")),
             );
             self.focus = Focus::Runs;
@@ -255,21 +255,21 @@ impl App {
 
     fn reject(&mut self) {
         if let Some(id) = self.selected_request_id() {
-            self.status = first_line(&run_project(&["grant", "reject", &id]).unwrap_or_else(|e| format!("error: {e}")));
+            self.status = first_line(&run_realm(&["grant", "reject", &id]).unwrap_or_else(|e| format!("error: {e}")));
             self.poll();
         }
     }
 
     fn revoke(&mut self) {
         if let Some(id) = self.selected_grant_id() {
-            self.status = first_line(&run_project(&["grant", "revoke", &id]).unwrap_or_else(|e| format!("error: {e}")));
+            self.status = first_line(&run_realm(&["grant", "revoke", &id]).unwrap_or_else(|e| format!("error: {e}")));
             self.poll();
         }
     }
 }
 
-fn run_project(args: &[&str]) -> io::Result<String> {
-    let output = Command::new("project")
+fn run_realm(args: &[&str]) -> io::Result<String> {
+    let output = Command::new("realm")
         .args(args)
         .stdin(Stdio::null())
         .output()?;
