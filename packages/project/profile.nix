@@ -19,6 +19,9 @@
   userPrefix ? "usr.prj_",
   workDirName ? "src",
   grantRoot,
+  displayOwner ? ownerUser,
+  displayXauthority ? "/home/${ownerUser}/.Xauthority",
+  defaultDisplay ? ":0",
   catalogWriteDir ? "",
   catalogApplyMessage ? null,
   agentConfigSharingSystemPackageRoot ? null,
@@ -71,6 +74,9 @@ let
       userPrefix
       workDirName
       grantRoot
+      displayOwner
+      displayXauthority
+      defaultDisplay
       ;
   };
   projectGrantsTui =

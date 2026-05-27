@@ -17,11 +17,13 @@ def load_catalog():
 CATALOG = load_catalog()
 ROOT = Path(os.environ["REALM_GRANT_ROOT"])
 SETFACL = os.environ["SETFACL"]
+XAUTH = os.environ["XAUTH"]
 REQUESTS = ROOT / "requests"
 RESULTS = ROOT / "results"
 GRANTS = ROOT / "grants"
 RUNS = ROOT / "runs"
 LOGS = ROOT / "logs"
+DISPLAY_GRANTS = ROOT / "display"
 
 def fail(message, code=64):
   print(f"realm: {message}", file=sys.stderr)
@@ -148,6 +150,11 @@ def summarize_request(request):
       f"mode:      {request.get('mode', 'read')}",
       f"ttl:       {request['ttlSeconds']}s",
     ]
+  elif request["type"] == "display":
+    lines += [
+      f"display:   {request.get('display', os.environ.get('REALM_DISPLAY', ':0'))}",
+      f"ttl:       {request['ttlSeconds']}s",
+    ]
   elif request["type"] == "sudo":
     lines += [
       f"cwd:       {request.get('cwd', '/')}",
@@ -172,6 +179,8 @@ def list_summary(request):
     mode = request.get("mode", "read")
     project = request.get("project", "")
     return compact_text(f"{project} [{mode}]")
+  if request["type"] == "display":
+    return compact_text(request.get("display", os.environ.get("REALM_DISPLAY", ":0")))
   if request["type"] == "sudo":
     return compact_text(" ".join(request.get("argv", [])))
   return ""
@@ -194,6 +203,17 @@ def cmd_request_access(args):
     "type": "access",
     "project": project,
     "mode": args.mode,
+    "ttlSeconds": parse_ttl(args.ttl),
+    "reason": args.reason,
+  })
+
+def cmd_request_display(args):
+  display = args.display
+  if any(char.isspace() for char in display):
+    fail(f"invalid display: {display}")
+  write_request({
+    "type": "display",
+    "display": display,
     "ttlSeconds": parse_ttl(args.ttl),
     "reason": args.reason,
   })
@@ -292,6 +312,71 @@ def apply_access_grant(request):
   suffix = "" if target_count == 1 else f" and {target_count - 1} included project(s)"
   print(f"granted {requester} {mode} access to {project_name}{suffix} until {time.ctime(expires_at)}")
 
+def display_grant_dir(grant_id):
+  return DISPLAY_GRANTS / grant_id
+
+def display_grant_xauthority(grant_id):
+  return display_grant_dir(grant_id) / "Xauthority"
+
+def extract_display_xauthority(source, target, display):
+  extracted = subprocess.run(
+    [XAUTH, "-f", source, "nextract", "-", display],
+    check=False,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+  )
+  if extracted.returncode != 0:
+    message = extracted.stderr.decode(errors="replace").strip()
+    fail(f"failed to extract Xauthority for {display}: {message}", 69)
+  if not extracted.stdout:
+    fail(f"no Xauthority entry for display {display}", 69)
+  merged = subprocess.run(
+    [XAUTH, "-f", str(target), "nmerge", "-"],
+    input=extracted.stdout,
+    check=False,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+  )
+  if merged.returncode != 0:
+    message = merged.stderr.decode(errors="replace").strip()
+    fail(f"failed to write display Xauthority: {message}", 69)
+
+def apply_display_grant(request):
+  requester = request["requester"]
+  expires_at = now() + int(request["ttlSeconds"])
+  display = request.get("display") or os.environ.get("REALM_DISPLAY", ":0")
+  source = os.environ.get("REALM_DISPLAY_XAUTHORITY")
+  if not source:
+    owner = os.environ.get("REALM_DISPLAY_OWNER", "")
+    source = f"/home/{owner}/.Xauthority" if owner else ""
+  if not source or not os.path.exists(source):
+    fail("display Xauthority source is not available", 69)
+
+  grant_dir = display_grant_dir(request["id"])
+  grant_dir.mkdir(mode=0o700, parents=True, exist_ok=False)
+  xauthority = display_grant_xauthority(request["id"])
+  extract_display_xauthority(source, xauthority, display)
+  user = pwd.getpwnam(requester)
+  os.chown(grant_dir, user.pw_uid, user.pw_gid)
+  os.chown(xauthority, user.pw_uid, user.pw_gid)
+  os.chmod(grant_dir, 0o700)
+  os.chmod(xauthority, 0o400)
+
+  grant = {
+    "id": request["id"],
+    "requester": requester,
+    "project": "display",
+    "mode": "display",
+    "display": display,
+    "xauthority": str(xauthority),
+    "expiresAt": expires_at,
+  }
+  with open(grant_path(request["id"]), "w", encoding="utf-8") as fh:
+    json.dump(grant, fh, indent=2, sort_keys=True)
+    fh.write("\n")
+  print(f"granted {requester} display access to {display} until {time.ctime(expires_at)}")
+  print(f"use: DISPLAY={display} XAUTHORITY={xauthority}")
+
 def revoke_grant(grant_id, missing_ok=False):
   path = grant_path(grant_id)
   if not path.exists():
@@ -301,7 +386,9 @@ def revoke_grant(grant_id, missing_ok=False):
   with open(path, "r", encoding="utf-8") as fh:
     grant = json.load(fh)
   requester = grant["requester"]
-  if grant.get("aclApplied", True):
+  if grant.get("mode") == "display":
+    shutil.rmtree(display_grant_dir(grant_id), ignore_errors=True)
+  elif grant.get("aclApplied", True):
     targets = grant.get("targets") or [{"home": grant["home"], "workdir": grant["workdir"]}]
     for target in targets:
       for directory in project_read_ancestor_dirs(target["home"], target["workdir"]):
@@ -476,6 +563,8 @@ def cmd_approve(args):
       fail("not approved", 1)
   if request["type"] == "access":
     apply_access_grant(request)
+  elif request["type"] == "display":
+    apply_display_grant(request)
   elif request["type"] == "sudo":
     if args.background:
       start_sudo_request(request)
@@ -509,7 +598,26 @@ def cmd_grants(args):
     except Exception:
       continue
     remaining = int(grant.get("expiresAt", 0)) - now()
-    print(f"{grant['id']}\t{grant['requester']}\t{grant['project']}\t{max(0, remaining)}s\t{grant['workdir']}")
+    detail = grant.get("workdir") or f"DISPLAY={grant.get('display', '')} XAUTHORITY={grant.get('xauthority', '')}"
+    print(f"{grant['id']}\t{grant['requester']}\t{grant['project']}\t{max(0, remaining)}s\t{detail}")
+
+def cmd_display_env(args):
+  ensure_dirs()
+  requester = current_user()
+  grants = []
+  for path in sorted(GRANTS.glob("*.json")):
+    try:
+      with open(path, "r", encoding="utf-8") as fh:
+        grant = json.load(fh)
+    except Exception:
+      continue
+    if grant.get("requester") == requester and grant.get("mode") == "display" and int(grant.get("expiresAt", 0)) > now():
+      grants.append(grant)
+  if not grants:
+    fail(f"no active display grant for {requester}", 77)
+  grant = sorted(grants, key=lambda item: int(item.get("expiresAt", 0)), reverse=True)[0]
+  print(f"export DISPLAY={grant.get('display', ':0')}")
+  print(f"export XAUTHORITY={grant['xauthority']}")
 
 def grant_allows_act(grant, requester, project_name):
   if grant.get("requester") != requester:
@@ -567,6 +675,11 @@ def main(argv):
   access.add_argument("--ttl", default="1h")
   access.add_argument("--reason", default="")
   access.set_defaults(func=cmd_request_access)
+  display = req_sub.add_parser("display")
+  display.add_argument("--display", default=os.environ.get("REALM_DISPLAY", ":0"))
+  display.add_argument("--ttl", default="1h")
+  display.add_argument("--reason", default="")
+  display.set_defaults(func=cmd_request_display)
   sudo = req_sub.add_parser("sudo")
   sudo.add_argument("--timeout", default="10m")
   sudo.add_argument("--reason", default="")
@@ -596,6 +709,8 @@ def main(argv):
   start_run.set_defaults(func=cmd_start_sudo_run)
   grants = sub.add_parser("grants")
   grants.set_defaults(func=cmd_grants)
+  display_env = sub.add_parser("display-env")
+  display_env.set_defaults(func=cmd_display_env)
   reject = sub.add_parser("reject")
   reject.add_argument("id")
   reject.set_defaults(func=cmd_reject)

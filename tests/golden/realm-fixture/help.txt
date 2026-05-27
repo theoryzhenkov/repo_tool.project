@@ -9,6 +9,7 @@ Usage:
   realm edit <name> [options] [--write]
   realm rename <old-name> <new-name> [options] [--write]
   realm request access <project> [--mode read|act] [--ttl 1h] [--reason ...]
+  realm request display [--display :0] [--ttl 1h] [--reason ...]
   realm request sudo -- <command...>
   realm requests
   realm grant show <request-id>
@@ -17,6 +18,7 @@ Usage:
   realm result <request-id>
   realm logs <request-id>
   realm runs
+  realm display-env
   realm grants [tui]
   realm revoke <grant-id>
   realm grant list|show|approve|reject|result|logs|runs|revoke|tui [...]

@@ -57,6 +57,7 @@ pkgs.writeShellApplication {
       realm edit <name> [options] [--write]
       realm rename <old-name> <new-name> [options] [--write]
       realm request access <project> [--mode read|act] [--ttl 1h] [--reason ...]
+      realm request display [--display :0] [--ttl 1h] [--reason ...]
       realm request sudo -- <command...>
       realm requests
       realm grant show <request-id>
@@ -65,6 +66,7 @@ pkgs.writeShellApplication {
       realm result <request-id>
       realm logs <request-id>
       realm runs
+      realm display-env
       realm grants [tui]
       realm revoke <grant-id>
       realm grant list|show|approve|reject|result|logs|runs|revoke|tui [...]
@@ -461,7 +463,7 @@ pkgs.writeShellApplication {
         esac
         ;;
       new|edit|rename) exec ${projectCatalogTool}/bin/realm-catalog "$command" "$@" ;;
-      request|result|logs|runs) exec ${projectGrantTool}/bin/realm-grant "$command" "$@" ;;
+      request|result|logs|runs|display-env) exec ${projectGrantTool}/bin/realm-grant "$command" "$@" ;;
       requests) if [ "$as_root" -eq 0 ] && [ "$(id -un)" = ${lib.escapeShellArg ownerUser} ]; then require_root "$command" "$@"; fi; exec ${projectGrantTool}/bin/realm-grant "$command" "$@" ;;
       approve|reject|revoke|expire-grants) if [ "$as_root" -eq 0 ]; then require_root "$command" "$@"; fi; exec ${projectGrantTool}/bin/realm-grant "$command" "$@" ;;
       enter|shell|run)
